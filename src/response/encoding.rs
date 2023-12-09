@@ -24,3 +24,19 @@ pub enum TransferEncoding {
     Deflate,
     Gzip,
 }
+
+// BODY ENCODING
+
+pub struct BodyEncoding {
+    pub content: ContentEncoding,
+    pub transfer: Option<TransferEncoding>,
+}
+
+impl Default for BodyEncoding {
+    fn default() -> Self {
+        Self {
+            content: ContentEncoding::Identity,
+            transfer: None,
+        }
+    }
+}

@@ -1,11 +1,15 @@
 use std::fmt;
 
+use crate::server::Version;
+
 use http::header::{HeaderMap, HeaderValue};
 use bytes::Bytes;
 
 // MODULES
 
 pub mod encoding;
+
+use encoding::BodyEncoding;
 
 // STATUS
 
@@ -26,69 +30,53 @@ impl<'a> fmt::Display for Status<'a> {
 
 const SERVER: &str = const_format::formatcp!("june/{} ({})", crate::VERSION, std::env::consts::FAMILY);
 
-// ENCODINGS
+// BODY
 
-use strum::{AsRefStr, Display, EnumString};
+pub struct Body {
+    pub encoding: BodyEncoding,
+    pub data: Bytes,
+}
 
-#[derive(Debug, AsRefStr, Display, EnumString, Eq, Hash, PartialEq)]
-#[strum(serialize_all = "lowercase")]
-pub enum TransferEncoding {
-    Chunked,
-    Compress,
-    Deflate,
-    Gzip,
+impl Default for Body {
+    fn default() -> Self {
+        Self {
+            encoding: BodyEncoding::default(),
+            data: Bytes::new(),
+        }
+    }
 }
 
 // RESPONSE
 
 pub struct Response<'a> {
-    version: &'a str,
-
     pub headers: HeaderMap<HeaderValue>,
     pub status: Status<'a>,
-    pub body: Bytes,
+    pub body: Body,
 }
 
 impl<'a> Response<'a> {
-    pub fn encode(&self) -> Bytes {
+    pub fn encode_plaintext(&self, version: Version) -> Bytes {
         let start = format!(
             "\
-            HTTP/{} {}\r\n\
+            {} {}\r\n\
             Server: {}\r\n\
             Content-Length: {}\r\n\
             ",
-            self.version, self.status,
+            version, self.status,
             SERVER,
-            self.body.len(),
+            self.body.data.len(),
         );
-    }
 
-}
-
-impl<'a> fmt::Display for Response<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "\
-            HTTP/{} {}\r\n\
-            Server: {}\r\n\
-            Content-Length: {}\r\n\
-            ",
-            self.version, self.status,
-            SERVER,
-            self.body.len(),
-        )?;
-
-        Ok(())
+        start.into()
     }
 }
 
 impl<'a> Default for Response<'a> {
     fn default() -> Self {
         Self {
-            version: "1.1",
+            headers: HeaderMap::new(),
             status: Status::OK,
-            body: Bytes::new(),
+            body: Body::default(),
         }
     }
 }
